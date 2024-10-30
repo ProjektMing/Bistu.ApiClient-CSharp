@@ -1,15 +1,16 @@
 ﻿using CASLogin;
+using Microsoft.Extensions.Logging;
 class Program
 {
     public static async Task Main()
     {
-        BistuAuthenticator bistuAuthenticator = new();
+        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+        var logger = factory.CreateLogger<BistuAuthenticator>();
+
+        BistuAuthenticator bistuAuthenticator = new(logger);
         var authCookies = await bistuAuthenticator.AuthenticateAsync();
-        if (authCookies == null)
-        {
-            Console.WriteLine("Failed to authenticate");
-            return;
-        }
+
         Console.WriteLine($"_WEU: {authCookies.GetAllCookies().FirstOrDefault(c => c.Name == "_WEU")?.Value}");
+        await bistuAuthenticator.LogoutAsync();
     }
 }
