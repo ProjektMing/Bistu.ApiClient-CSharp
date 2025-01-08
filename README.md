@@ -1,4 +1,4 @@
-# CASLogin
+# Bistu.Api
 灵感来源于学长制作的[金智教务网登录程序](https://github.com/Bistutu/GoCampusLogin),尝试使用 C# 重实现。
 目前仅实现了获取登录 cookie 的功能
 
