@@ -1,44 +1,30 @@
-using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
-namespace CASLogin
+namespace BistuAuthService
 {
-    public partial class BistuAuthenticator
+    public partial class BistuAuthenticator(
+        ILogger<BistuAuthenticator> logger,
+        HttpClient httpClient,
+        CookieContainer cookieContainer
+    )
     {
         [GeneratedRegex(@"<input[^>]*name=""execution""[^>]*value=""([^""]*)""")]
         private static partial Regex ExecutionExtractorRegex();
 
         private const string BaseUrl = "https://wxjw.bistu.edu.cn/authserver";
         private const string PortalUrl = "https://jwxt.bistu.edu.cn/jwapp/sys/emaphome/portal";
-        private readonly HttpClient client;
-        private readonly ILogger<BistuAuthenticator> _logger;
+        private readonly HttpClient client =
+            httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        private readonly ILogger<BistuAuthenticator> _logger = logger;
 
-        public CookieContainer CookieContainer { get; set; }
-
-        public BistuAuthenticator(ILogger<BistuAuthenticator> logger, [Optional] HttpClient httpClient)
-        {
-            _logger = logger;
-            CookieContainer = new CookieContainer();
-            var handler = new HttpClientHandler
-            {
-                CookieContainer = CookieContainer
-            };
-
-            client = httpClient ?? new HttpClient(handler);
-        }
+        public CookieContainer CookieContainer { get; set; } =
+            cookieContainer ?? throw new ArgumentNullException(nameof(cookieContainer));
 
         private void InitializeHttp()
         {
             client.DefaultRequestHeaders.Add("User-Agent", "qrLogin");
-            client.DefaultRequestHeaders.Add("Origin", "http://wxjw.bistu.edu.cn");
-            client.DefaultRequestHeaders.Add("Referer", $"http://wxjw.bistu.edu.cn/login?service={PortalUrl}/index.do");
-            _logger.LogInformation("Adding initial cookies to the CookieContainer.");
-            CookieContainer.Add(new Cookie("route", "b19e6014fb75f45c1ec0aab119bd4e8e", "/authserver", "wxjw.bistu.edu.cn"));
-            CookieContainer.Add(new Cookie("platformMultilingual", "zh_CN", "/", "edu.cn"));
-            CookieContainer.Add(new Cookie("route", "ad55296587da6765d9ff0a1e7203b2c2", "/personalInfo", "wxjw.bistu.edu.cn"));
-            CookieContainer.Add(new Cookie("route", "c83e11eebb8da619ef6a94bc26688b29", "/", "jwxt.bistu.edu.cn"));
         }
 
         private static string ExtractExecutionValue(string htmlInput)
@@ -48,7 +34,7 @@ namespace CASLogin
             return match.Groups[1].Value;
         }
 
-        public async Task<CookieContainer> AuthenticateAsync()
+        public async Task<bool> AuthorizeAsync()
         {
             try
             {
@@ -67,7 +53,12 @@ namespace CASLogin
                 var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var uuid = await client.GetStringAsync($"{BaseUrl}/qrCode/getToken?ts={timestamp}");
 
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo($"{BaseUrl}/qrCode/getCode?uuid={uuid}") { UseShellExecute = true });
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo($"{BaseUrl}/qrCode/getCode?uuid={uuid}")
+                    {
+                        UseShellExecute = true
+                    }
+                );
                 await client.GetAsync($"{BaseUrl}/qrCode/qrCodeLogin.do?uuid={uuid}");
 
                 int statusCode;
@@ -76,10 +67,15 @@ namespace CASLogin
                 {
                     await Task.Delay(800);
                     timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    var statusResponse = await client.GetStringAsync($"{BaseUrl}/qrCode/getStatus.htl?ts={timestamp}&uuid={uuid}");
+                    var statusResponse = await client.GetStringAsync(
+                        $"{BaseUrl}/qrCode/getStatus.htl?ts={timestamp}&uuid={uuid}"
+                    );
                     if (!int.TryParse(statusResponse, out statusCode))
                     {
-                        _logger.LogError("Failed to parse status code. As the Response is {statusResponse}", statusResponse);
+                        _logger.LogError(
+                            "Failed to parse status code. As the Response is {statusResponse}",
+                            statusResponse
+                        );
                     }
 
                     switch (statusCode)
@@ -93,18 +89,19 @@ namespace CASLogin
                     }
                 } while (statusCode != 1);
                 _logger.LogInformation("QR code login successful.");
-                await PostLoginAsync(uuid,executionValue);
-                var ticketCookie = CookieContainer.GetAllCookies()
-                    .FirstOrDefault(c => c.Name == "MOD_AUTH_CAS")
+                await PostLoginAsync(uuid, executionValue);
+                Cookie ticketCookie =
+                    CookieContainer.GetAllCookies().FirstOrDefault(c => c.Name == "MOD_AUTH_CAS")
                     ?? throw new Exception("Failed to get ticket cookie.");
-                var ticket = ticketCookie.Value.AsSpan(9).ToString();
-                await client.GetAsync($"https://jwxt.bistu.edu.cn/jwapp/sys/emaphome/portal/index.do?ticket={ticket}");
-                return CookieContainer;
+                string ticket = ticketCookie.Value.AsSpan(9).ToString();
+                await client.GetAsync($"{PortalUrl}/index.do?ticket={ticket}");
+                _ = cookieContainer.GetAllCookies().First(c => c.Name == "_WEU");
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred during authentication.");
-                throw;
+                return false;
             }
         }
 
@@ -117,23 +114,37 @@ namespace CASLogin
             response.EnsureSuccessStatusCode();
             _logger.LogInformation("Logged out successfully.");
         }
-        private async Task PostLoginAsync(string uuid,string executionValue)
+
+        private async Task PostLoginAsync(string uuid, string executionValue)
         {
-            using (FormUrlEncodedContent loginContent = new(
-                [
-                        new KeyValuePair<string, string>("lt", ""),
-                        new KeyValuePair<string, string>("uuid", uuid),
-                        new KeyValuePair<string, string>("cllt", "qrLogin"),
-                        new KeyValuePair<string, string>("dllt", "generalLogin"),
-                        new KeyValuePair<string, string>("execution", executionValue),
-                        new KeyValuePair<string, string>("_eventId", "submit"),
-                        new KeyValuePair<string, string>("rmShown", "1"),
-                ]))
+            using (
+                FormUrlEncodedContent loginContent =
+                    new(
+                        [
+                            new KeyValuePair<string, string>("lt", ""),
+                            new KeyValuePair<string, string>("uuid", uuid),
+                            new KeyValuePair<string, string>("cllt", "qrLogin"),
+                            new KeyValuePair<string, string>("dllt", "generalLogin"),
+                            new KeyValuePair<string, string>("execution", executionValue),
+                            new KeyValuePair<string, string>("_eventId", "submit"),
+                            new KeyValuePair<string, string>("rmShown", "1"),
+                        ]
+                    )
+            )
             {
                 await client.PostAsync("https://wxjw.bistu.edu.cn/authserver/login", loginContent);
             }
 
             _logger.LogInformation("Login Form posted");
+        }
+
+        public async Task<string> FetchScheduleAsync()
+        {
+            var httpResponse = await client.PostAsync(
+                "https://jwxt.bistu.edu.cn/jwapp/sys/wdkb/modules/xskcb.do",
+                new FormUrlEncodedContent([new KeyValuePair<string, string>("*json", "1")])
+            );
+            return await httpResponse.Content.ReadAsStringAsync();
         }
     }
 }
