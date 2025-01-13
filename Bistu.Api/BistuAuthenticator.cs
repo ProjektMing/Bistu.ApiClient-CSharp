@@ -4,10 +4,18 @@ using Microsoft.Extensions.Logging;
 
 namespace BistuAuthService
 {
+    /// <summary>
+    /// 登录 BISTU 教务系统
+    /// </summary>
+    /// <param name="logger">传入logger</param>
+    /// <param name="httpClient"></param>
+    /// <param name="cookieContainer"></param>
+    /// <param name="loginHandler"></param>
     public partial class BistuAuthenticator(
         ILogger<BistuAuthenticator> logger,
         HttpClient httpClient,
-        CookieContainer cookieContainer
+        CookieContainer cookieContainer,
+        Action<string> loginHandler
     )
     {
         [GeneratedRegex(@"<input[^>]*name=""execution""[^>]*value=""([^""]*)""")]
@@ -24,7 +32,7 @@ namespace BistuAuthService
 
         private void InitializeHttp()
         {
-            client.DefaultRequestHeaders.Add("User-Agent", "qrLogin");
+            client.DefaultRequestHeaders.Add("User-Agent", "QrLogin");
         }
 
         private static string ExtractExecutionValue(string htmlInput)
@@ -52,13 +60,8 @@ namespace BistuAuthService
 
                 var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var uuid = await client.GetStringAsync($"{BaseUrl}/qrCode/getToken?ts={timestamp}");
+                loginHandler($"{BaseUrl}/qrCode/getCode?uuid={uuid}");
 
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo($"{BaseUrl}/qrCode/getCode?uuid={uuid}")
-                    {
-                        UseShellExecute = true
-                    }
-                );
                 await client.GetAsync($"{BaseUrl}/qrCode/qrCodeLogin.do?uuid={uuid}");
 
                 int statusCode;
@@ -82,7 +85,7 @@ namespace BistuAuthService
                     {
                         case 3:
                             _logger.LogWarning("QR code expired.");
-                            break;
+                            return false;
                         case 2:
                             _logger.LogInformation("QR code scanned.");
                             break;
@@ -95,7 +98,8 @@ namespace BistuAuthService
                     ?? throw new Exception("Failed to get ticket cookie.");
                 string ticket = ticketCookie.Value.AsSpan(9).ToString();
                 await client.GetAsync($"{PortalUrl}/index.do?ticket={ticket}");
-                _ = cookieContainer.GetAllCookies().First(c => c.Name == "_WEU");
+                var weu = cookieContainer.GetAllCookies().First(c => c.Name == "_WEU");
+                _logger.LogDebug("获得 _WEU: {weu}", weu);
                 return true;
             }
             catch (Exception ex)
@@ -140,10 +144,10 @@ namespace BistuAuthService
 
         public async Task<string> FetchScheduleAsync()
         {
-            var httpResponse = await client.PostAsync(
-                "https://jwxt.bistu.edu.cn/jwapp/sys/wdkb/modules/xskcb.do",
-                new FormUrlEncodedContent([new KeyValuePair<string, string>("*json", "1")])
+            var httpResponse = await client.GetAsync(
+                "https://jwxt.bistu.edu.cn/jwapp/sys/wdkb/modules/xskcb/cxxszhxqkb.do?XNXQDM=2024-2025-1"
             );
+            httpResponse.EnsureSuccessStatusCode();
             return await httpResponse.Content.ReadAsStringAsync();
         }
     }
