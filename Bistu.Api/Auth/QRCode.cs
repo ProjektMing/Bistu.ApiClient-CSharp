@@ -1,17 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using BistuAuthService;
 using Microsoft.Extensions.Logging;
 
-namespace BistuAuthService;
+namespace Bistu.Api.Auth;
 
-/// <summary>
-/// 登录 BISTU 教务系统
-/// </summary>
-/// <param name="logger">传入logger</param>
-/// <param name="httpClient"></param>
-/// <param name="cookieContainer"></param>
-/// <param name="loginHandler"></param>
-public partial class BistuAuthenticator(
+public partial class QRCode(
     ILogger<BistuAuthenticator> logger,
     HttpClient httpClient,
     CookieContainer cookieContainer,
@@ -32,7 +31,7 @@ public partial class BistuAuthenticator(
 
     private void InitializeHttp()
     {
-        client.DefaultRequestHeaders.Add("User-Agent", "Bistu.Api");
+        client.DefaultRequestHeaders.Add("User-Agent", "QrLogin");
     }
 
     private static string ExtractExecutionValue(string htmlInput)

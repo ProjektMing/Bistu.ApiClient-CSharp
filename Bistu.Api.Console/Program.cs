@@ -1,4 +1,4 @@
-﻿using BistuAuthService;
+using BistuAuthService;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
