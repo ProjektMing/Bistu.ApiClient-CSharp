@@ -1,35 +1,19 @@
-using BistuAuthService;
+using Bistu.Api.Extensions;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
+namespace Bistu.Api.Console;
+
 internal class Program
 {
-    public static async Task Main()
+    public static void Main()
     {
         Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
         using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddSerilog());
-        var logger = factory.CreateLogger<BistuAuthenticator>();
-        HttpClientHandler handler = new() { CookieContainer = new() };
-        var httpClient = new HttpClient(handler);
+        ILogger<Authenticator> logger = factory.CreateLogger<Authenticator>();
 
-        BistuAuthenticator bistuAuthenticator =
-            new(
-                logger,
-                httpClient,
-                handler.CookieContainer,
-                s =>
-                    System.Diagnostics.Process.Start(
-                        new System.Diagnostics.ProcessStartInfo(s) { UseShellExecute = true }
-                    )
-            );
-        var authStatus = await bistuAuthenticator.AuthorizeAsync();
-        if (!authStatus)
-        {
-            Console.WriteLine("Failed to authenticate.");
-            return;
-        }
-        Console.WriteLine(await bistuAuthenticator.FetchScheduleAsync());
-        await Console.In.ReadLineAsync();
-        await bistuAuthenticator.LogoutAsync();
+        Authenticator bistuAuthenticator =
+            new Authenticator().AsPassword("Ming", "123456");
+        bistuAuthenticator.LogoutAsync();
     }
 }

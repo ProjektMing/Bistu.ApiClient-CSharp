@@ -1,8 +1,7 @@
-namespace Bistu.Api.Test
+namespace Bistu.Api.Test;
+
+public class LoginTest
 {
-    public class LoginTest
-    {
-        [Fact]
-        public void Test1() { }
-    }
+    [Fact]
+    public void Test1() { }
 }
