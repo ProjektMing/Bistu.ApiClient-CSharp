@@ -1,0 +1,8 @@
+<Solution>
+    <Folder Name="/Solution Items/">
+        <File Path=".editorconfig" />
+    </Folder>
+    <Project Path="src/Bistu.Api.Console/Bistu.Api.Console.csproj" />
+    <Project Path="src/Bistu.Api.Test/Bistu.Api.Test.csproj" />
+    <Project Path="src/Bistu.Api/Bistu.Api.csproj" />
+</Solution>

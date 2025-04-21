@@ -4,16 +4,16 @@ using Serilog;
 
 namespace Bistu.Api.Console;
 
-internal class Program
+internal static class Program
 {
-    public static void Main()
+    public static async Task Main()
     {
         Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
         using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddSerilog());
         ILogger<Authenticator> logger = factory.CreateLogger<Authenticator>();
 
         Authenticator bistuAuthenticator =
-            new Authenticator().AsPassword("Ming", "123456");
-        bistuAuthenticator.LogoutAsync();
+            Authenticator.Create().AsPassword("Ming", "123456");
+        await bistuAuthenticator.LogoutAsync();
     }
 }

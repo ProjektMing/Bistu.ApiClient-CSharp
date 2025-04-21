@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html class="root-main">
+<!-- 移动端 --><!-- PC端 --><!-- 二维码扫码登录 --><!-- 兼容性登录 --><!-- 帐号登录或动态码登录 -->
+
+<head>
+    <meta charset="utf-8"/>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type"/>
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible"/>
+    <title>统一身份认证平台</title>
+    <script>
+        var inputUserNameTip = "\u8BF7\u8F93\u5165\u7528\u6237\u540D";
+        var inputPasswordTip = "\u8BF7\u8F93\u5165\u5BC6\u7801";
+        var inputCodeTip = "\u8BF7\u8F93\u5165\u9A8C\u8BC1\u7801";
+        var qrLoginTip = "\u626B\u7801\u767B\u5F55";
+        var qrInvalidTip = "\u4E8C\u7EF4\u7801\u5DF2\u5931\u6548\uFF0C\u70B9\u51FB\u5237\u65B0";
+
+        var inputMobileTip = "\u8BF7\u8F93\u5165\u624B\u673A\u53F7\u6216\u5B66\u53F7";
+        var inputDynamicTip = "\u8BF7\u8F93\u5165\u9A8C\u8BC1\u7801";
+        var getDynamicCodeTip = "\u83B7\u53D6\u9A8C\u8BC1\u7801";
+        var inputDynamicGetCode = "\u83B7\u53D6\u9A8C\u8BC1\u7801";
+        var excludeRegular = "\u7528\u6237\u540D\u5305\u542B\u7279\u6B8A\u5B57\u7B26";
+        //不转码，防止参数丢失
+        var service = null;
+        var jsonObject = {
+            "pcLogoPath": null,
+            "pcThemeColor": null,
+            "officialUrl": null,
+            "defaultWxQrCode": 0,
+            "wxQrCode": null,
+            "defaultImage": 0,
+            "imageType": 1,
+            "shufflingTime": 5,
+            "shufflingStyle": 2,
+            "imageNames": ["default_login.png"],
+            "mobileLogoPath": null,
+            "mobileThemeColor": null,
+            "mobileModel": 0,
+            "mobileImages": ["default_mobile_login.png"],
+            "otherModel": 0,
+            "otherImages": ["default_auth_serv_bg.png"]
+        };
+        var reg = "[$:{}]";
+    </script>
+    <script type="text/javascript">
+        if (service == '' || !service) {
+            service = '' //saml后缀
+        }
+        var isQrLogin = 'false'
+        var isQrLoginEnabled = 'true'
+        var captchaSwitch = '1'
+        var needCaptcha = ''
+        var _fidoEnabled = 'true'
+        var is_dynamicLogin = 'false'
+        var contextPath = '/authserver'
+        var type = "userNameLogin"
+        var cllt = ""
+        var _badCredentialsCount = '3'
+    </script>
+    <style>
+        .change-color {
+            color: !important;
+        }
+
+        .change-bg-color {
+            background-color: !important;
+        }
+
+        .change-bd-color {
+            border-color: !important;
+        }
+    </style>
+    <link href="/authserver/cusTheme1/static/css/toastr.min.css?v=20240820.153313" rel="stylesheet" type="text/css"/>
+    <link href="/authserver/cusTheme1/static/web/css/login.css?v=20240820.153313" rel="stylesheet" type="text/css"/>
+    <link href="/authserver/cusTheme1/static/web/iconfont/iconfont.css?v=20240820.153313" rel="stylesheet"
+          type="text/css"/>
+    <link href="/authserver/cusTheme1/static/web/css/fido.css?v=20240820.153313" rel="stylesheet" type="text/css"/>
+    <link href="/authserver/cusTheme1/static/common/css/swiper.min.css?v=20240820.153313" rel="stylesheet"
+          type="text/css"/>
+    <link href="/authserver/cusTheme1/customStatic/web/css/gorgeous.css?v=20240820.153313" rel="stylesheet"
+          type="text/css"/>
+    <script src="/authserver/cusTheme1/static/common/swiper.min.js?v=20240820.153313" type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/common/jquery-latest.min.js?v=20240820.153313"
+            type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/js/plugin/toastr.min.js?v=20240820.153313"
+            type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/common/utils.js?v=20240820.153313" type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/common/common-header.js?v=20240820.153313"
+            type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/common/encrypt.js?v=20240820.153313" type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/web/js/fido.js?v=20240820.153313" type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/web/js/schoolCombinedLogin.js?v=20240820.153313"
+            type="text/javascript"></script>
+    <script src="/authserver/cusTheme1/static/web/js/login.js?v=20240820.153313" type="text/javascript"></script>
+</head>
+
+<body>
+<div class="container-ge">
+    <div class="auth_page_wrappers">
+        <!-- 轮播图 -->
+        <div class="swiper-container swiper-main">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide">
+                    <img src="/authserver/cusTheme1/customStatic/web/images/bg.png"
+                         style="width: 100%; height: 100%"/>
+                </div>
+            </div>
+        </div>
+        <div class="auth_page_body">
+            <div class="auth_page_content">
+                <div class="g-logo-title">
+                    <div class="school-logo lang_text_ellipsis" style="display: none">
+                        <span class="logo-title">统一身份认证</span>
+                    </div>
+                    <div class="t-language-switch">
+                        <div class="g-language-switch item">
+                            <button class="g-switch-result" style="height: 32px">
+                                <span class="g-switch-btn lang_text_ellipsis" id="language_switch_name"></span>
+                                <span class="g-switch-arrow"></span>
+                            </button>
+                            <div class="item-show">
+                                <ul class="g-switch-list" id="language_switch"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="auth_login_content">
+                    <div class="left-bg" style="display: none">
+                        <img class="content-bg active"
+                             src="/authserver/cusTheme1/static/common/images/default_login.png"/>
+                    </div>
+                    <div style="margin: 0 auto">
+                        <div class="wrap-ge">
+                            <a class="qrcodeA" id="qrCodeA"></a>
+                            <a class="qrcodeB" id="qrCodeB" style="display: none"></a>
+                            <section class="main">
+                                <img src="/authserver/cusTheme1/customStatic/web/images/logo.jpg"
+                                     style="max-width: 320px; max-height: 70px; display: flex"/>
+                                <div class="tabHead">
+                                        <span id="pwdLoginSpan" title="账号登录">
+                                            <a class="loginFont_a text_ellipsis" href="javascript:void(0)"
+                                               id="userNameLogin_a"
+                                               onclick="showTabHeadAndDiv('userNameLogin',1)"
+                                               style="max-width: fit-content!important;">账号登录</a>
+                                            <div class="tabHead-underline change-bg-color">&nbsp;</div>
+                                        </span>
+                                    <span id="phoneLoginSpan" style="display: none" title="验证码登录">
+                                            <a class="loginFont_a text_ellipsis" href="javascript:void(0)"
+                                               id="dynamicLogin_a"
+                                               onclick="showTabHeadAndDiv('dynamicLogin',1)">验证码登录</a>
+                                            <div class="tabHead-underline change-bg-color">&nbsp;</div>
+                                        </span>
+                                    <span id="fidoLoginSpan" style="max-width: 120px;display: none" title="生物识别">
+                                            <a class="loginFont_a text_ellipsis" href="javascript:void(0)"
+                                               id="fidoLogin_a"
+                                               onclick="showTabHeadAndDiv('fidoLogin',1)">生物识别</a>
+                                            <div class="tabHead-underline change-bg-color">&nbsp;</div>
+                                        </span>
+                                    <span id="qrLoginSpan" style="display: none" title="扫码登录">
+                                            <a class="loginFont_a text_ellipsis" href="javascript:void(0)"
+                                               id="qrLogin_a"
+                                               onclick="showTabHeadAndDiv('qrLogin',1)">扫码登录</a>
+                                            <div class="tabHead-underline change-bg-color">&nbsp;</div>
+                                        </span>
+                                </div>
+                                <div class="login-main login-slider">
+                                    <!--登录FORM-->
+                                    <div id="loginViewDiv">
+                                        <!-- 用户名密码登录 -->
+                                        <div id="pwdLoginDiv">
+                                            <div>
+                                                <form action="/authserver/login" class="loginFromClass" id="pwdFromId"
+                                                      method="post">
+                                                    <div class="form">
+                                                        <!-- 用户名密码登录 -->
+                                                        <div class="m-account">
+                                                            <div class="username-item" style="
+                height: 40px;
+                border-width: 1px 1px 0 1px;
+                border-style: solid;
+                border-color: #d5d5d5;
+
+                border-radius: 0 0 4px 4px;
+                padding: 8px 2.5%;
+              ">
+                                                                    <span class="prex-icon">
+                                                                        <!--  <img th:src="@{${#themes.code('custom.static.path')}+'/web/images/user1.png'}" class="login-icon"/> --><img
+                                                                            class="login-icon"
+                                                                            src="/authserver/cusTheme1/customStatic/web/images/user1.png"/></span>
+                                                                <input id="username" name="username"
+                                                                       placeholder="请输入学号/工号"
+                                                                       title="请输入学号/工号"
+                                                                       type="text"
+                                                                       value=""/>
+                                                            </div>
+                                                            <div class="password-item" style="
+                height: 40px;
+                border-width: 1px 1px 0 1px;
+                border-style: solid;
+                border-color: #d5d5d5;
+                border-bottom: 1px solid #d5d5d5;
+                padding: 8px 2.5%;
+                position: relative;
+              ">
+                                                                    <span class="prex-icon"><img
+                                                                            class="login-icon"
+                                                                            src="/authserver/cusTheme1/customStatic/web/images/pass1.png"/></span>
+                                                                <input id="password" maxlength="32"
+                                                                       name="passwordText" placeholder="请输入密码"
+                                                                       title="请输入密码" type="password"/><input
+                                                                    id="saltPassword" name="password"
+                                                                    type="hidden"/><a class="ge-input-eye eye-hide"
+                                                                                      style="position: absolute; top: 20px"></a>
+
+                                                                <div class="item-error-tip lang_text_ellipsis"
+                                                                     id="pwdErrorTip"></div>
+                                                            </div>
+                                                            <div class="captcha item hide" id="captchaDiv"
+                                                                 style="height: 61px">
+                                                                    <span class="captcha-icon"
+                                                                          style="position: absolute; left: 11px; top: 10px">
+                                                                        <img height="30px"
+                                                                             src="/authserver/cusTheme1/customStatic/web/images/captcha1.png"
+                                                                             style="height: 40px; width: 40px"/></span>
+                                                                <input autocomplete="off" class="change-input-color"
+                                                                       id="captcha"
+                                                                       maxlength="10" name="captcha"
+                                                                       placeholder="请输入验证码"
+                                                                       style="border: 1px solid #d5d5d5;border-top: none;"
+                                                                       title="请输入验证码"
+                                                                       type="text"/><span
+                                                                    class="captcha-img">
+                                                                        <img alt="验证码错误" height="30px"
+                                                                             id="captchaImg"/><a
+                                                                    class="mask-inner captcha-refresh"
+                                                                    href="javascript:void(0);"
+                                                                    onclick="reloadCaptcha(true)">刷新</a>
+                                                                    </span>
+
+                                                                <div class="item-error-tip lang_text_ellipsis"
+                                                                     id="captchaErrorTip"></div>
+                                                            </div>
+                                                            <div class="rememberMe">
+                                                                <input class="check-box" id="rememberMe"
+                                                                       name="rememberMe" type="checkbox"
+                                                                       value="true"/><span
+                                                                    class="check-title lang_text_ellipsis"
+                                                                    style="font-size: 16px">7天免登录</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="ge-btn">
+                                                            <div class="form-errorTip lang_text_ellipsis"
+                                                                 id="formErrorTip">
+                                                                <span class="form-error" id="showErrorTip"></span>
+                                                                <span class="form-warn" id="showWarnTip"></span>
+                                                            </div>
+                                                            <div class="btn">
+                                                                <a class="login-btn change-bg-color"
+                                                                   href="javascript:void(0);"
+                                                                   id="login_submit"
+                                                                   onclick="startLogin(this)">登录</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <input id="_eventId" name="_eventId" type="hidden"
+                                                           value="submit"/><input id="cllt" name="cllt" type="hidden"
+                                                                                  value="userNameLogin"/><input
+                                                        id="dllt" name="dllt"
+                                                        type="hidden" value="generalLogin"/><input id="lt"
+                                                                                                   name="lt"
+                                                                                                   type="hidden"
+                                                                                                   value=""/><input
+                                                        id="pwdEncryptSalt"
+                                                        type="hidden" value="S9imZH1st9OwgJcJ"/><input
+                                                        id="execution" name="execution" type="hidden"
+                                                        value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="help-inline" style="display: none">
+                                        <div class="help-inline-tip"></div>
+                                    </div>
+                                    <div class="help">
+                                        <!-- 帐号激活 --><a class="activation-account lang_text_ellipsis"
+                                                            href="../retrieve-password/accountActivation/index.html"
+                                                            id="activationAccountId">账号激活</a>
+                                        <span class="split-lines"></span>
+                                        <!-- 在线帮助文档  --><!-- 忘记密码 --><a class="fo-password lang_text_ellipsis"
+                                                                                  href="../retrieve-password/retrievePassword/index.html"
+                                                                                  id="retrievePassId">忘记密码</a>
+                                    </div>
+                                    <div class="ts">
+                                        <div style="padding-bottom: 10px; margin-top: 5px; font-weight: bold">温馨提示:
+                                        </div>
+                                        <div style="padding-bottom: 10px">1. 学生登录为学号,教师登录为工号。</div>
+                                        <div style="padding-bottom: 10px">2. 初次登录请激活，并修改密码。</div>
+                                        <div>3. 浏览器支持：谷歌、360浏览器 (极速)、IE (9.0+)。</div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- 嵌入二维码登录 -->
+                            <section class="auth-qroce" style="display: none">
+                                <span class="qrcode_title lang_text_ellipsis">扫码登录</span>
+                                <div class="qrcode-middle">
+                                    <div>
+                                        <script src="/authserver/cusTheme1/static/custom/js/qrcode.js?v=20240820.153313"
+                                                type="text/javascript"></script>
+                                        <div class="qr_scan_box">
+                                            <form action="/authserver/login" id="qrLoginForm" method="post"
+                                                  role="form">
+                                                <div id="qr_code">
+                                                    <div class="qr_scan_code"><img id="qr_img" src=""/></div>
+                                                    <span class="title lang_text_ellipsis">手机扫码 安全登录</span>
+                                                </div>
+
+                                                <div id="qr_success" style="display: none">
+                                                    <div class="qr_scan_success">
+                                                        <img
+                                                                src="/authserver/cusTheme1/static/custom/images/Success.png"/><span
+                                                            class="title title_h1 lang_text_ellipsis">扫描成功</span>
+                                                        <span
+                                                                class="sub_title lang_text_ellipsis">请在手机上「确认登录」</span>
+                                                    </div>
+                                                    <div class="scan_footer lang_text_ellipsis"><a class="scan_a"
+                                                                                                   href="javascript:refresh();">返回二维码</a>
+                                                    </div>
+                                                </div>
+
+                                                <div id="qr_invalid" style="display: none">
+                                                    <div class="qr_scan_code">
+                                                        <img id="invalid_img" src=""/>
+                                                        <div class="qr_scan_Invalid">
+                                                            <img id="qr_refresh"
+                                                                 onclick="refresh()"
+                                                                 src="/authserver/cusTheme1/static/custom/images/refresh.png"/>
+                                                        </div>
+                                                    </div>
+                                                    <span class="title lang_text_ellipsis">手机扫码 安全登录</span>
+                                                </div>
+
+                                                <input id="lt" name="lt" type="hidden" value=""/><input
+                                                    id="uuid" name="uuid" type="hidden" value=""/><input
+                                                    name="cllt" type="hidden" value="qrLogin"/><input id="dllt"
+                                                                                                      name="dllt"
+                                                                                                      type="hidden"
+                                                                                                      value="generalLogin"><input
+                                                    name="execution"
+                                                    type="hidden"
+                                                    value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/><input
+                                                    name="_eventId" type="hidden" value="submit"/><input
+                                                    name="rmShown" type="hidden" value="1">
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="qrcode_img_tip">
+                                    <p class="qrcode_tip num-text-ellipsis-2">扫码登录</p>
+                                </div>
+                            </section>
+
+                            <div class="footer" style="display: none">
+                                <div class="ways">
+                                    <div class="item">
+                                        <a href="/authserver/combinedLogin.do?type=weixin"
+                                           id="combinedLogin_a_weiXin">
+                                            <img alt=""
+                                                 src="/authserver/cusTheme1/static/web/images/weixin.png"/></a>
+                                        <div class="prompt-bottom item-show">
+                                            <span class="text_ellipsis">微信登录</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!--跨校认证start--><!--跨校认证end-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bottom-pane" style="display: none">
+                    <div class="copy-bottom">江苏金智教育信息股份有限公司</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 滑块验证码 -->
+<div id="sliderCaptchaDiv"></div>
+<!-- fido登录 -->
+<div id="fidoLoginDiv" style="display: none">
+    <div style="height: 260px;margin-top: 60px">
+        <a class="loginFont_a" href="javascript:void(0);" onclick="startAssertion('#loginFromId');">
+            <div class="fidoLogo">
+                <img alt="" class="fidoLogoImage" src="/authserver/cusTheme1/static/web/images/fido.jpg"/>
+                <div class="text change-color num-text-ellipsis-2" id="ukey_info" style="width: 100%;">点击开启识别登录
+                </div>
+            </div>
+        </a>
+        <form action="/authserver/login" class="loginFromClass" id="loginFromId" method="post">
+            <div class="lang_text_ellipsis" style="width:100%;color: red;margin-top: 10px;">
+                <span id="showErrorTip"></span>
+            </div>
+            <input id="_eventId" name="_eventId" type="hidden" value="submit"/><input id="username-fido"
+                                                                                      name="username" type="hidden"
+                                                                                      value=""><input
+                id="responseJson-fido"
+                name="responseJson"
+                type="hidden"
+                value=""><input
+                id="cllt" name="cllt" type="hidden" value="fidoLogin"><input
+                id="dllt" name="dllt" type="hidden" value="generalLogin"><input id="lt" name="lt" type="hidden"
+                                                                                value=""/><input id="execution"
+                                                                                                 name="execution"
+                                                                                                 type="hidden"
+                                                                                                 value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/>
+        </form>
+        <div class="lang_text_ellipsis" id="showFidoErrorTip" style="width:100%;color: red;display: none;">
+            <span id="showFidoErrorTipSpan" style="font-size: 14px;"></span>
+        </div>
+    </div>
+</div>
+<!-- 手机动态码登录 -->
+<div id="phoneLoginDiv" style="display: none">
+    <div>
+        <form action="/authserver/login" class="loginFromClass" id="phoneFromId" method="post">
+            <div class="form">
+                <!-- 动态码登录 -->
+                <div class="m-phone">
+                    <div class="username item" style="overflow: visible;">
+                        <p class="account-title pc-mobile">
+                            <span class="lang_text_ellipsis">手机号</span>
+                            <span class="item" style="position: absolute;">
+                                    <img class="mobile-tip"
+                                         height="16px"
+                                         src="/authserver/cusTheme1/customStatic/web/images/question.png"><span
+                                    class="mobile-tip-prompt mobile-item-show">海外手机请按“国家代码-手机号”的格式输入，如：1-888888</span>
+                                </span>
+                        </p>
+                        <input class="change-input-color" id="username" name="username" placeholder="请输入手机号/学号"
+                               title="请输入手机号/学号" type="text" value="">
+                        <div class="item-error-tip lang_text_ellipsis" id="nameErrorTip"></div>
+                    </div>
+                    <div class="captcha item" id="captchaDiv">
+                        <p class="account-title pc-captcha lang_text_ellipsis" id="captchaTitle">验证码</p>
+                        <input autocomplete="off" class="change-input-color" id="captcha" maxlength="10" name="captcha"
+                               placeholder="请输入验证码" title="请输入验证码" type="text"><span class="captcha-img">
+                                <img alt="验证码错误" height="30px" id="captchaImg"><a
+                            class="mask-inner captcha-refresh"
+                            href="javascript:void(0);" onclick="reloadCaptcha(true)">刷新</a>
+                            </span>
+                        <div class="item-error-tip lang_text_ellipsis" id="captchaErrorTip"></div>
+                    </div>
+                    <div class="code item" style="margin-bottom: 24px;">
+                        <p class="account-title pc-code lang_text_ellipsis">短信验证码</p>
+                        <i class="auth_icon auth_icon_bar"></i>
+                        <input autocomplete="off" class="change-input-color" id="dynamicCode" maxlength="10"
+                               name="dynamicCode" placeholder="请输入短信验证码" title="请输入短信验证码"
+                               type="text"><a
+                            class="get-code text_ellipsis" href="javascript:void(0)" onclick="startDynamicCode()"
+                            title="获取验证码">
+                        <span class="change-color">获取验证码</span>
+                    </a>
+                        <a class="get-code-tip get-code text_ellipsis" href="javascript:void(0)"
+                           style="display: none;" title="后重发">
+                            <span class="getCodeText change-color">120</span>
+                            <span style="color: #86909C;">后重发</span>
+                        </a>
+                        <div class="item-error-tip lang_text_ellipsis" id="dynamicErrorTip"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ge-btn" style="margin-top: 30px;">
+                <div class="form-errorTip lang_text_ellipsis" id="formErrorTip">
+                    <span class="form-error" id="showErrorTip"></span>
+                    <span class="form-warn" id="showWarnTip"></span>&nbsp;
+                </div>
+                <div class="btn">
+                    <a class="login-btn change-bg-color" href="javascript:void(0);" id="login_submit"
+                       onclick="startLogin(this)">登录</a>
+                </div>
+            </div>
+            <input id="_eventId" name="_eventId" type="hidden" value="submit"/><input id="cllt" name="cllt"
+                                                                                      type="hidden"
+                                                                                      value="dynamicLogin"><input
+                id="dllt" name="dllt" type="hidden"
+                value="generalLogin"><input id="lt" name="lt" type="hidden" value=""/><input id="pwdEncryptSalt"
+                                                                                             type="hidden"
+                                                                                             value="S9imZH1st9OwgJcJ"/><input
+                id="execution" name="execution" type="hidden"
+                value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/>
+        </form>
+    </div>
+</div>
+<!-- 用户名密码登录 -->
+<div id="pwdLoginDiv" style="display: none">
+    <div>
+        <form action="/authserver/login" class="loginFromClass" id="pwdFromId" method="post">
+            <div class="form">
+                <!-- 用户名密码登录 -->
+                <div class="m-account">
+                    <div class="username-item" style="
+                height: 40px;
+                border-width: 1px 1px 0 1px;
+                border-style: solid;
+                border-color: #d5d5d5;
+
+                border-radius: 0 0 4px 4px;
+                padding: 8px 2.5%;
+              ">
+                            <span class="prex-icon">
+                                <!--  <img th:src="@{${#themes.code('custom.static.path')}+'/web/images/user1.png'}" class="login-icon"/> --><img
+                                    class="login-icon"
+                                    src="/authserver/cusTheme1/customStatic/web/images/user1.png"/></span>
+                        <input id="username" name="username" placeholder="请输入学号/工号" title="请输入学号/工号"
+                               type="text"
+                               value=""/>
+                    </div>
+                    <div class="password-item" style="
+                height: 40px;
+                border-width: 1px 1px 0 1px;
+                border-style: solid;
+                border-color: #d5d5d5;
+                border-bottom: 1px solid #d5d5d5;
+                padding: 8px 2.5%;
+                position: relative;
+              ">
+                            <span class="prex-icon"><img class="login-icon"
+                                                         src="/authserver/cusTheme1/customStatic/web/images/pass1.png"/></span>
+                        <input id="password" maxlength="32" name="passwordText" placeholder="请输入密码"
+                               title="请输入密码"
+                               type="password"/><input id="saltPassword" name="password" type="hidden"/><a
+                            class="ge-input-eye eye-hide" style="position: absolute; top: 20px"></a>
+
+                        <div class="item-error-tip lang_text_ellipsis" id="pwdErrorTip"></div>
+                    </div>
+                    <div class="captcha item hide" id="captchaDiv" style="height: 61px">
+                            <span class="captcha-icon" style="position: absolute; left: 11px; top: 10px">
+                                <img height="30px" src="/authserver/cusTheme1/customStatic/web/images/captcha1.png"
+                                     style="height: 40px; width: 40px"/></span>
+                        <input autocomplete="off" class="change-input-color" id="captcha" maxlength="10" name="captcha"
+                               placeholder="请输入验证码" style="border: 1px solid #d5d5d5;border-top: none;"
+                               title="请输入验证码"
+                               type="text"/><span class="captcha-img">
+                                <img alt="验证码错误" height="30px" id="captchaImg"/><a
+                            class="mask-inner captcha-refresh"
+                            href="javascript:void(0);" onclick="reloadCaptcha(true)">刷新</a>
+                            </span>
+
+                        <div class="item-error-tip lang_text_ellipsis" id="captchaErrorTip"></div>
+                    </div>
+                    <div class="rememberMe">
+                        <input class="check-box" id="rememberMe" name="rememberMe" type="checkbox"
+                               value="true"/><span class="check-title lang_text_ellipsis"
+                                                   style="font-size: 16px">7天免登录</span>
+                    </div>
+                </div>
+
+                <div class="ge-btn">
+                    <div class="form-errorTip lang_text_ellipsis" id="formErrorTip">
+                        <span class="form-error" id="showErrorTip"></span>
+                        <span class="form-warn" id="showWarnTip"></span>
+                    </div>
+                    <div class="btn">
+                        <a class="login-btn change-bg-color" href="javascript:void(0);" id="login_submit"
+                           onclick="startLogin(this)">登录</a>
+                    </div>
+                </div>
+            </div>
+            <input id="_eventId" name="_eventId" type="hidden" value="submit"/><input id="cllt" name="cllt"
+                                                                                      type="hidden"
+                                                                                      value="userNameLogin"/><input
+                id="dllt" name="dllt" type="hidden"
+                value="generalLogin"/><input id="lt" name="lt" type="hidden" value=""/><input id="pwdEncryptSalt"
+                                                                                              type="hidden"
+                                                                                              value="S9imZH1st9OwgJcJ"/><input
+                id="execution" name="execution" type="hidden"
+                value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/>
+        </form>
+    </div>
+</div>
+<!-- 嵌入二维码登录 -->
+<div id="qrLoginDiv" style="display: none">
+    <div>
+        <script src="/authserver/cusTheme1/static/custom/js/qrcode.js?v=20240820.153313"
+                type="text/javascript"></script>
+        <div class="qr_scan_box">
+            <form action="/authserver/login" id="qrLoginForm" method="post" role="form">
+                <div id="qr_code">
+                    <div class="qr_scan_code"><img id="qr_img" src=""/></div>
+                    <span class="title lang_text_ellipsis">手机扫码 安全登录</span>
+                </div>
+
+                <div id="qr_success" style="display: none">
+                    <div class="qr_scan_success">
+                        <img src="/authserver/cusTheme1/static/custom/images/Success.png"/><span
+                            class="title title_h1 lang_text_ellipsis">扫描成功</span>
+                        <span class="sub_title lang_text_ellipsis">请在手机上「确认登录」</span>
+                    </div>
+                    <div class="scan_footer lang_text_ellipsis"><a class="scan_a"
+                                                                   href="javascript:refresh();">返回二维码</a></div>
+                </div>
+
+                <div id="qr_invalid" style="display: none">
+                    <div class="qr_scan_code">
+                        <img id="invalid_img" src=""/>
+                        <div class="qr_scan_Invalid">
+                            <img id="qr_refresh" onclick="refresh()"
+                                 src="/authserver/cusTheme1/static/custom/images/refresh.png"/>
+                        </div>
+                    </div>
+                    <span class="title lang_text_ellipsis">手机扫码 安全登录</span>
+                </div>
+
+                <input id="lt" name="lt" type="hidden" value=""/><input id="uuid" name="uuid" type="hidden"
+                                                                        value=""/><input name="cllt" type="hidden"
+                                                                                         value="qrLogin"/><input
+                    id="dllt" name="dllt"
+                    type="hidden" value="generalLogin"><input name="execution" type="hidden"
+                                                              value="904e4ce9-f3ac-4f52-818f-ee8e82244d5a_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuMTkvaURXSTh2b3B5MGZldTZ6TUF0TTZkeXhzWmhXOCs2SjF3Zkw1bXBmenF6VVpiazBDYUFxM0lSYzkwemJhS1JTamtRRlRiODBuTmVWNW41OEhaSkFLcGo5dUlsSFl1akJ0N3p3MG80VDg1V3NYU0t3WHF4YjVNV1dWOUNCeTA2K0o5YnplYU1oRzFWZDFhUjBjU0QyN1pYTFd1YXR2dXZ1KzIwTjVUbUFrWUExVlFLU2pHZnlhaGJKa2RYYmZxMVk3TENtaTh5bW0rTUJ0blJQQndkNUdlR2luQTFoR1JFcnpIbXpRelhLZXViSFNNc3VUQnhzRm50SkE2Q2dqNU1JODQ4a3JKVGdLSzdoM05aTzkvRit0Skg1UXlkelNYd2tnSGNlR3UwY1dqaEtMSGc2bTVpMWVwNWlzY2VmQ0hXdDBVd3VYTlJ4YU5xMFNqRmVnR3pqc2pwUnBOaWhUQ1d0dld5clJXek4xbzd1U3V0T1hXK01QMDVMRUkyNy8rcDlvRUpRWG5sS1RqS0V6T2d1U1c3YzRBNkl5TG9NUDU2ODNPeCs3VDF1WGJzN2kwSk1idkp6YTdtQ1ZRK01yU1FLWjlRYzMxS2ZrdHAvaVVhTFJQNExtUGpmbDdSVDM2WnJ0S2JtQjlVKytCQ1lFUGhLR1F1V3BwTGVQR2FzYnc0RGtHUExpQVdROHgrQm80SkJPSHprb2Fva2VrNUQvTTdScXNzMVIvOERraVdwZjZIZFRkbld4UldybTZEaDM1V2F6engrU1NhVUlXOFlVVU8xUFBjdXNiUGlZdy9LOVNhbERRVENXZTFXU1FrR3NTV0tFQityUUxZK2dSVCtuaEF2M2FjUjJRU0d5U1Y1cENzSkhjdlpMY0hZUUFuR0cxbGl0QWhDZnp1d0tMVy81RjkwTzdyK0l5VXg4TXVGVVE4Rmk2cDRmalpLRFFobnVHNU0zNDF1S3FJUFdjb29aY21QSTlJWjVDYkNLOGdWZmhrKzZZWTFvVUh0SXJWeVE3RVBob0srckl3MUVkWE1Nd1NaSGY0NEI1QmkydnB2c0pnYUFOQkxNdk91dXNGVWM3M1ZRZWxaczRjUU8yTjlpZnc4SmNmUkhzL3BCOHVUYVJSa3cyVGQ4dmU2ejZqM3ptOXlaWXE1Zk8xV3J1SzduZm53cnM1R2VuSThHTldQQVF6aVh0M3JQUmxqNG1sKzhiNjM0R1JTNXlsVEw1NFpEbnZIMjBDT2dRakxLNllhaS8xZFAyNkl4Ynd1ZUIzOVFGbHNiS0h3Sjh6ZGRydHBQV3dmNVFTZWZMMXd5MFVOc0ZoaXhUT3B0Um5VVUFwZzdoMytCem5abWxRUmNnaWtFaXdKcitXdVp6T0NUNkdrRlpqVGd3cEhveW9PVXZUdnd4ZXBPMUZpbGxBVE1PeXhnWkFNVVhCTU93ZjV6alBBczFjTEg4MmFQS2NrREFlWCt3MUFFZjZ1c0RiZkVhYVNTM1FzaFhMUi8ybUszSURJMUNrcXlaMVlHOTJtbmxjcHowbSs3d3hRVEtteUdRTzRFZGZqWDN0akNINkcvUWZhVkJUWVRFVWpoTSt6TE5nc04ybjNEVHRiZTR1ZVBETU1obDdvVVNnT3ZiWlY5eUxEM2cwcFZXRDZPWmVBM1UrUnhjNDlFeElQWGZ6R0tMK2VvMlhuMlRXNkQ2R0hpOGZ5eWJ5RTY1b291Tm5NeUlETlhxSVp3NUFEQkNWbTFPcEZMeElsMnBwT21zNmZnY3BiclJ3ekZuMk8yK3lIRm9Td1duR1V1d1NtanpFOFZxVmxJbnhxM1lBYUkvWFM0cTNCZzB4STlOYTNCcHdBQlhUUktETys0VkVGanFmTGVHcUZZUW9hQno0NjJYNU10TVRSUUdtUkZybG1sMGFoZS8zVWxYZGhxaVFEVmtkUEEvZGhOWGRNOTAvN29qQ0docWhDMUZ0aFc4OUk2d2ZscU9LZXdvTDFUdmVDdEJQbHZUUXQwbHlISUZmak4zeU5RPS5DNFB5V21lZU5BdkpCVlFYdkNPX1NCRDNPT3hOdVIzSUtQSWtMR0ZZVXVxaGRJUGYwMHBHbHoycmlSRlZfT0xFUFhMRm1rTHRZdFpnZ1NoOEZBZjlYQQ=="/><input
+                    name="_eventId" type="hidden" value="submit"/><input name="rmShown" type="hidden" value="1">
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+<script src="/authserver/cusTheme1/static/custom/js/login-language.js?v=20240820.153313"
+        type="text/javascript"></script>
+
+</html>
