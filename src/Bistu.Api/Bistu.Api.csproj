@@ -1,23 +1,25 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>Bistu.Api</PackageId>
-        <Version>1.0.0</Version>
+        <Version>0.0.1</Version>
         <Authors>ProjektMing</Authors>
         <Company>BISTU</Company>
         <Description>为北京信息科技大学教务处做的第三方 Api</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>北京信息科技大学</PackageTags>
+        <PackageTags>北京信息科技大学;北信科;金智教务</PackageTags>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="docs\README.md" Pack="true" PackagePath="\"/>
+        <None Include="docs/README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
     <ItemGroup>
-        <Folder Include="Api\"/>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+            <_Parameter1>Bistu.Api.Test</_Parameter1>
+        </AssemblyAttribute>
     </ItemGroup>
 </Project>
