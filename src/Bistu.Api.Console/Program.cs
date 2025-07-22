@@ -15,21 +15,27 @@ internal static class Program
         });
         var logger = loggerFactory.CreateLogger(nameof(Program));
 
+        var credit = System.Console.ReadLine();
+        var credits =
+            credit?.Split(' ') ?? throw new ArgumentNullException(nameof(credit), "请输入用户名、密码和学号");
+
         try
         {
             using var client = new BistuClient();
 
             // 示例1：使用用户名密码认证
-            // var success = await client.UsePassword("your_username", "your_password").LoginAsync();
+            var success = await client.UsePassword(credits[0], credits[1]).LoginAsync();
 
             // 示例2：使用二维码认证
-            var success = await client
-                .UseQrCode(qrCode =>
-                {
-                    System.Console.WriteLine($"请扫描二维码登录: {client.CasAddress.Uri + qrCode}");
-                    // 这里可以显示二维码或者打开浏览器
-                })
-                .LoginAsync();
+            //var success = await client
+            //    .UseQrCode(qrCode =>
+            //    {
+            //        System.Console.WriteLine(
+            //            $"请扫描二维码登录: https://wxjw.bistu.edu.cn/authserver/qrCode/getCode?uuid={qrCode}"
+            //        );
+            //        // 这里可以显示二维码或者打开浏览器
+            //    })
+            //    .LoginAsync();
 
             if (success)
             {

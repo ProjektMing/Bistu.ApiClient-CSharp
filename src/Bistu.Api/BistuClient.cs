@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Bistu.Api;
 
@@ -7,13 +8,11 @@ namespace Bistu.Api;
 /// </summary>
 public class BistuClient : IDisposable
 {
-    private const int ExecutionTokenLength = 2205;
-    private static readonly Range Range = ^2537..^(2537 - ExecutionTokenLength);
-
     private readonly HttpClient _httpClient;
     private readonly Authenticator _authenticator;
     private readonly bool _ownsHttpClient;
     private bool _disposed;
+    private ILogger<BistuClient>? _logger;
 
     /// <summary>
     /// Cookie container for maintaining session state
@@ -23,12 +22,12 @@ public class BistuClient : IDisposable
     /// <summary>
     /// CAS server address
     /// </summary>
-    public UriBuilder CasAddress { get; set; } = new("https://wxjw.bistu.edu.cn/authserver");
+    public Uri CasAddress { get; set; } = new("https://wxjw.bistu.edu.cn/authserver");
 
     /// <summary>
     /// Portal server address
     /// </summary>
-    public UriBuilder PortalAddress { get; set; } = new("https://jwxt.bistu.edu.cn");
+    public Uri PortalAddress { get; set; } = new("https://jwxt.bistu.edu.cn");
 
     /// <summary>
     /// Initializes a new instance of BistuClient with a provided HttpClient
@@ -36,15 +35,14 @@ public class BistuClient : IDisposable
     /// <param name="httpClient">The HttpClient to use for requests</param>
     public BistuClient(HttpClient httpClient)
     {
-        ArgumentNullException.ThrowIfNull(httpClient);
-
         _httpClient = httpClient;
         _ownsHttpClient = false;
-        _authenticator = new Authenticator(input => input[Range])
+        _authenticator = new Authenticator(CookieContainer)
         {
             // 同步门户地址
             PortalAddress = PortalAddress
         };
+        _logger?.LogDebug("初始化");
     }
 
     /// <summary>
@@ -62,7 +60,7 @@ public class BistuClient : IDisposable
     /// <returns>登录是否成功</returns>
     /// <exception cref="InvalidOperationException">当未配置认证策略或登录失败时抛出</exception>
     /// <exception cref="ObjectDisposedException">当客户端已被释放时抛出</exception>
-    public async Task<bool> LoginAsync()
+    public async Task<bool> LoginAsync(CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -71,12 +69,20 @@ public class BistuClient : IDisposable
             // 同步门户地址（以防用户在配置后更改了地址）
             _authenticator.PortalAddress = PortalAddress;
 
-            return await _authenticator.LoginAsync();
+            return await _authenticator.LoginAsync(token);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException("BISTU authentication failed.", ex);
         }
+    }
+
+    public Task<bool> LoginAsync() => LoginAsync(CancellationToken.None);
+
+    public Task<HttpResponseMessage> GetAsync(string url, CancellationToken token = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _httpClient.GetAsync(url, token);
     }
 
     #region 认证策略配置
@@ -86,10 +92,8 @@ public class BistuClient : IDisposable
     /// <param name="qrCodeHandler">处理二维码 URL 的回调方法，参数为二维码图片的 URL</param>
     /// <returns>当前 BistuClient 实例，支持方法链式调用</returns>
     /// <exception cref="ArgumentNullException">当 qrCodeHandler 为 null 时抛出</exception>
-    public BistuClient UseQrCode(Action<string> qrCodeHandler)
+    public BistuClient UseQrCode(Action<string>? qrCodeHandler = null)
     {
-        ArgumentNullException.ThrowIfNull(qrCodeHandler);
-
         _authenticator.UseQrCode(qrCodeHandler);
         return this;
     }
@@ -124,6 +128,13 @@ public class BistuClient : IDisposable
             BaseAddress = new Uri("https://wxjw.bistu.edu.cn/authserver"),
             Timeout = TimeSpan.FromSeconds(30)
         };
+    }
+
+    public BistuClient SetLogger(ILogger<BistuClient> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _authenticator.SetLogger((ILogger<Authenticator>)logger);
+        return this;
     }
 
     #region IDisposable 实现

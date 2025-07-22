@@ -1,7 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
-using System.Text.RegularExpressions;
 using Bistu.Api.Models;
 using Bistu.Api.Models.QrCode;
+using Bistu.Api.Utils;
+using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Paddings;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Security;
 
 namespace Bistu.Api;
 
@@ -13,59 +20,39 @@ public partial class Authenticator : IDisposable
     private readonly HttpClient _client;
     private readonly CookieContainer _cookieContainer;
     private Action<string>? _qrCodeAction;
-    private readonly Func<string, string> _extractExecutionToken;
     private readonly SubmitForm _form;
     private bool _disposed;
+    private ILogger<Authenticator>? _logger;
 
     /// <summary>
     /// 基础 URL 地址
     /// </summary>
-    public UriBuilder CasAddress => new("https://wxjw.bistu.edu.cn/authserver/");
+    public Uri CasAddress { get; set; } = new("https://wxjw.bistu.edu.cn/authserver/");
 
     /// <summary>
     /// 教务系统门户 URL
     /// </summary>
-    public UriBuilder PortalAddress { get; set; } = new("https://jwxt.bistu.edu.cn/jwapp");
+    public Uri PortalAddress { get; set; } = new("https://jwxt.bistu.edu.cn/jwapp");
 
-    /// <summary>
-    /// Cookie 容器，用于维护会话状态
-    /// </summary>
     public CookieContainer CookieContainer => _cookieContainer;
 
-    public Authenticator(Func<string, string>? func)
+    public Authenticator(CookieContainer cookieContainer)
     {
-        _cookieContainer = new CookieContainer();
+        _cookieContainer = cookieContainer ?? new CookieContainer();
         var handler = new HttpClientHandler
         {
             CookieContainer = _cookieContainer,
             UseCookies = true
         };
-        _client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://wxjw.bistu.edu.cn/authserver/")
-        };
-
-        _extractExecutionToken =
-            func ?? (input => ExecutionValueRegex().Match(input).Groups["execution"].Value);
-
-        // 获取执行令牌
-        var execution = GetExecutionToken();
-        _form = new SubmitForm { Execution = execution };
+        _client = new HttpClient(handler) { BaseAddress = CasAddress };
     }
 
-    [GeneratedRegex(@"(?<=execution[^>]+)value=""(?<execution>.+)""", RegexOptions.RightToLeft)]
-    private static partial Regex ExecutionValueRegex();
-
-    /// <summary>
-    /// 获取执行令牌
-    /// </summary>
-    private string GetExecutionToken()
+    private (string, string) GetExecutionToken()
     {
         try
         {
             var content = _client.GetStringAsync("./login").GetAwaiter().GetResult();
-            return _extractExecutionToken(content)
-                ?? throw new InvalidOperationException("Execution token not found.");
+            return HtmlExtracter.Extract(content);
         }
         catch (Exception ex)
         {
@@ -77,20 +64,18 @@ public partial class Authenticator : IDisposable
     /// 执行登录操作
     /// </summary>
     /// <returns>登录是否成功</returns>
-    public async Task<bool> LoginAsync()
+    public async Task<bool> LoginAsync(CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        token.ThrowIfCancellationRequested();
 
         try
         {
             return _form.Strategy switch
             {
-                AuthenticationStrategy.QrCode => await LoginWithQrCodeAsync(),
-                AuthenticationStrategy.UsernameAndPassword => await LoginWithPasswordAsync(),
-                AuthenticationStrategy.None
-                    => throw new InvalidOperationException(
-                        "Authentication strategy must be set before login."
-                    ),
+                AuthenticationStrategy.QrCode => await LoginWithQrCodeAsync(token),
+                AuthenticationStrategy.UsernameAndPassword => await LoginWithPasswordAsync(token),
+                AuthenticationStrategy.None => false,
                 _
                     => throw new NotSupportedException(
                         $"Unsupported authentication strategy: {_form.Strategy}"
@@ -106,7 +91,7 @@ public partial class Authenticator : IDisposable
     /// <summary>
     /// 使用用户名密码登录
     /// </summary>
-    private async Task<bool> LoginWithPasswordAsync()
+    private async Task<bool> LoginWithPasswordAsync(CancellationToken token)
     {
         if (string.IsNullOrEmpty(_form.Username) || string.IsNullOrEmpty(_form.Password))
         {
@@ -116,7 +101,7 @@ public partial class Authenticator : IDisposable
         }
 
         var content = _form.Build();
-        var response = await _client.PostAsync("./login", content);
+        var response = await _client.PostAsync("./login", content, token);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -124,18 +109,18 @@ public partial class Authenticator : IDisposable
         }
 
         // 完成门户登录
-        await CompletePortalLoginAsync();
+        await CompletePortalLoginAsync(token);
         return true;
     }
 
     /// <summary>
     /// 使用二维码登录
     /// </summary>
-    private async Task<bool> LoginWithQrCodeAsync()
+    private async Task<bool> LoginWithQrCodeAsync(CancellationToken token)
     {
         // 获取二维码 UUID
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var uuid = await _client.GetStringAsync($"./qrCode/getToken?ts={timestamp}");
+        var uuid = await _client.GetStringAsync($"./qrCode/getToken?ts={timestamp}", token);
 
         if (string.IsNullOrWhiteSpace(uuid))
         {
@@ -146,21 +131,20 @@ public partial class Authenticator : IDisposable
         _form.Uuid = uuid;
 
         // 通知外部处理器显示二维码
-        var qrCodeUrl = $"./qrCode/getCode?uuid={uuid}";
-        _qrCodeAction?.Invoke(qrCodeUrl);
+        _qrCodeAction?.Invoke(uuid);
 
         // 初始化二维码登录会话
-        await _client.GetAsync($"./qrCode/qrCodeLogin.do?uuid={uuid}");
+        await _client.GetAsync($"./qrCode/qrCodeLogin.do?uuid={uuid}", token);
 
         // 轮询二维码状态
         LoginStatus status;
         do
         {
-            await Task.Delay(800);
+            await Task.Delay(800, token);
             timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
             var statusResponse = await _client.GetStringAsync(
-                $"./qrCode/getStatus.htl?ts={timestamp}&uuid={uuid}"
+                string.Format("./qrCode/getStatus.htl?uuid={0}&ts={1}", uuid, timestamp),
+                token
             );
 
             if (!int.TryParse(statusResponse, out var statusCode))
@@ -186,10 +170,10 @@ public partial class Authenticator : IDisposable
         } while (status != LoginStatus.Success);
 
         // 提交最终登录表单
-        await PostQrCodeLoginAsync(uuid);
+        await PostQrCodeLoginAsync(uuid, token);
 
         // 完成门户登录
-        await CompletePortalLoginAsync();
+        await CompletePortalLoginAsync(token);
 
         return true;
     }
@@ -197,11 +181,11 @@ public partial class Authenticator : IDisposable
     /// <summary>
     /// 提交二维码登录的最终表单
     /// </summary>
-    private async Task PostQrCodeLoginAsync(string uuid)
+    private async Task PostQrCodeLoginAsync(string uuid, CancellationToken token)
     {
         _form.Uuid = uuid;
         var content = _form.Build();
-        var response = await _client.PostAsync("./login", content);
+        var response = await _client.PostAsync("./login", content, token);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -214,7 +198,7 @@ public partial class Authenticator : IDisposable
     /// <summary>
     /// 完成门户登录过程
     /// </summary>
-    private async Task CompletePortalLoginAsync()
+    private async Task CompletePortalLoginAsync(CancellationToken token)
     {
         // 查找票据 Cookie
         var ticketCookie =
@@ -228,7 +212,10 @@ public partial class Authenticator : IDisposable
                 : throw new InvalidOperationException("Invalid ticket cookie format.");
 
         // 使用票据访问门户
-        var portalResponse = await _client.GetAsync($"{PortalAddress}/index.do?ticket={ticket}");
+        var portalResponse = await _client.GetAsync(
+            new Uri(PortalAddress, "./index?ticket=" + ticket),
+            token
+        );
 
         if (!portalResponse.IsSuccessStatusCode)
         {
@@ -248,7 +235,7 @@ public partial class Authenticator : IDisposable
     /// </summary>
     private Cookie? FindCookie(string name)
     {
-        foreach (Cookie cookie in _cookieContainer.GetCookies(CasAddress.Uri))
+        foreach (Cookie cookie in _cookieContainer.GetCookies(CasAddress))
         {
             if (cookie.Name == name)
             {
@@ -257,7 +244,7 @@ public partial class Authenticator : IDisposable
         }
 
         // 也检查门户 URL 的 Cookies
-        foreach (Cookie cookie in _cookieContainer.GetCookies(PortalAddress.Uri))
+        foreach (Cookie cookie in _cookieContainer.GetCookies(PortalAddress))
         {
             if (cookie.Name == name)
             {
@@ -268,14 +255,21 @@ public partial class Authenticator : IDisposable
         return null;
     }
 
+    [MemberNotNull(nameof(_logger))]
+    public Authenticator SetLogger(ILogger<Authenticator> logger)
+    {
+        _logger = logger;
+        return this;
+    }
+
     #region 配置方法
     /// <summary>
     /// 配置使用二维码认证
     /// </summary>
     /// <param name="action">处理二维码 URL 的回调方法</param>
-    public Authenticator UseQrCode(Action<string> action)
+    public Authenticator UseQrCode(Action<string>? action = null)
     {
-        _qrCodeAction = action ?? throw new ArgumentNullException(nameof(action));
+        _qrCodeAction = action;
         _form.Strategy = AuthenticationStrategy.QrCode;
         return this;
     }
@@ -293,7 +287,28 @@ public partial class Authenticator : IDisposable
             throw new ArgumentException("Password cannot be null or empty.", nameof(password));
 
         _form.Username = username;
-        _form.Password = password;
+
+        // CBCEncrypt AES/CBC/PKCS7Padding 加密
+        SecureRandom random = new();
+        byte[] iv = new byte[16]; // AES 块大小 = 16字节
+        random.NextBytes(iv);
+        var aes = new AesEngine();
+        var cbc = new CbcBlockCipher(aes);
+        var paddedCipher = new PaddedBufferedBlockCipher(cbc, new Pkcs7Padding());
+        paddedCipher.Init(
+            true,
+            new ParametersWithIV(
+                new KeyParameter(System.Text.Encoding.UTF8.GetBytes("your-encryption-key-here")),
+                iv
+            )
+        );
+        byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(password);
+        byte[] outputBytes = new byte[paddedCipher.GetOutputSize(inputBytes.Length)];
+        int length = paddedCipher.ProcessBytes(inputBytes, 0, inputBytes.Length, outputBytes, 0);
+        length += paddedCipher.DoFinal(outputBytes, length);
+        var encryptedPassword = Convert.ToBase64String(outputBytes, 0, length);
+
+        _form.Password = encryptedPassword;
         _form.Strategy = AuthenticationStrategy.UsernameAndPassword;
         return this;
     }
@@ -317,5 +332,6 @@ public partial class Authenticator : IDisposable
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
+
     #endregion
 }
