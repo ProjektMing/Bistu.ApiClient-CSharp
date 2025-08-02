@@ -9,7 +9,7 @@ using Org.BouncyCastle.Security;
 
 namespace Bistu.Api.Utils;
 
-internal static class Encrypt
+internal static class CryptoUtils
 {
     public static string Password(string plain, string salt)
     { // CBCEncrypt AES/CBC/PKCS7Padding 加密

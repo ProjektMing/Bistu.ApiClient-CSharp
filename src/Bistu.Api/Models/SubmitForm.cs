@@ -51,7 +51,7 @@ internal class SubmitForm
     public void ToUsernameLogin(string username, string password)
     {
         Username = username;
-        Password = Encrypt.Password(password, Salt);
+        Password = CryptoUtils.Password(password, Salt);
         Strategy = AuthenticationStrategy.UsernameAndPassword;
     }
 
