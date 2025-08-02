@@ -1,4 +1,8 @@
 # Bistu.Api
+
+> [!WARNING]
+> 当前开发中断，因为当前不再能获得必要的 cookie 信息，影响 302 携带的参数，原因暂不明，但仅发生于 C# 的代码里，来源 go 仍能正常工作
+
 灵感来源于学长制作的[金智教务网登录程序](https://github.com/Bistutu/GoCampusLogin),尝试使用 C# 重实现。
 目前仅实现了获取登录 cookie 的功能
 
